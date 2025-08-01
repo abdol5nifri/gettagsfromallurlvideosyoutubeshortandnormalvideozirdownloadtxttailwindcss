@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>📥 استخراج التاغات من YouTube</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center px-4">
+  <div class="max-w-2xl w-full bg-white p-6 rounded-2xl shadow-lg text-center">
+    <h1 class="text-2xl font-bold mb-4 text-blue-800">🎯 استخراج التاغات من رابط YouTube</h1>
+    
+    <input id="videoUrl" type="text" placeholder="ألصق رابط الفيديو هنا"
+           class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    
+    <button onclick="fetchTags()"
+            class="w-full bg-blue-700 text-white py-3 rounded-lg hover:bg-blue-800 transition">جلب التاغات</button>
+    
+    <div id="tagsContainer" class="mt-6 flex flex-wrap justify-center gap-2 text-sm"></div>
+    
+    <div class="mt-4 flex flex-col sm:flex-row justify-center gap-3">
+      <button id="copyBtn" onclick="copyTags()" disabled
+              class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+        📋 نسخ التاغات
+      </button>
+      
+      <button id="downloadBtn" onclick="downloadTags()" disabled
+              class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
+        📄 تحميل كـ .txt
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const apiKey = "AIzaSyDMWWYjIpIYo6nCHTZjG_53wHJHBBO__2s"; // ← عوّضها بمفتاحك الحقيقي
+
+    function extractVideoId(url) {
+      try {
+        let videoId = null;
+        const parsedUrl = new URL(url);
+        const hostname = parsedUrl.hostname;
+
+        if (hostname.includes("youtu.be")) {
+          videoId = parsedUrl.pathname.slice(1);
+        } else if (parsedUrl.pathname.includes("/watch")) {
+          videoId = parsedUrl.searchParams.get("v");
+        } else if (parsedUrl.pathname.includes("/shorts/")) {
+          videoId = parsedUrl.pathname.split("/shorts/")[1].split("?")[0];
+        } else if (parsedUrl.pathname.includes("/embed/")) {
+          videoId = parsedUrl.pathname.split("/embed/")[1];
+        }
+
+        return videoId && videoId.length === 11 ? videoId : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function fetchTags() {
+      const url = document.getElementById("videoUrl").value;
+      const videoId = extractVideoId(url);
+      const container = document.getElementById("tagsContainer");
+      const copyBtn = document.getElementById("copyBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      container.innerHTML = '<p class="text-gray-500">⏳ جاري جلب التاغات...</p>';
+      copyBtn.disabled = true;
+      downloadBtn.disabled = true;
+
+      if (!videoId) {
+        container.innerHTML = '<p class="text-red-500">❌ رابط غير صحيح أو غير مدعوم</p>';
+        return;
+      }
+
+      const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${apiKey}`;
+
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        const tags = data.items[0]?.snippet?.tags;
+
+        if (tags && tags.length) {
+          container.innerHTML = tags.map(tag => `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${tag}</span>`).join('');
+          const tagString = tags.join(", ");
+          copyBtn.disabled = false;
+          downloadBtn.disabled = false;
+          copyBtn.setAttribute("data-tags", tagString);
+        } else {
+          container.innerHTML = '<p class="text-yellow-600">⚠️ لا توجد تاغات متاحة لهذا الفيديو</p>';
+        }
+      } catch (err) {
+        container.innerHTML = '<p class="text-red-600">🚫 وقع خطأ أثناء جلب البيانات</p>';
+        console.error(err);
+      }
+    }
+
+    function copyTags() {
+      const tags = document.getElementById("copyBtn").getAttribute("data-tags");
+      navigator.clipboard.writeText(tags).then(() => {
+        alert("✅ تم نسخ التاغات!");
+      }).catch(() => {
+        alert("❌ وقع خطأ أثناء النسخ");
+      });
+    }
+
+    function downloadTags() {
+      const tags = document.getElementById("copyBtn").getAttribute("data-tags");
+      const blob = new Blob([tags], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'youtube-tags.txt';
+      a.click();
+
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
