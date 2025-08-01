@@ -1,37 +1,43 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>📥 استخراج التاغات من YouTube</title>
+  <meta charset="UTF-8">
+  <title>📺 جلب التاغات من فيديو يوتيوب</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center px-4">
-  <div class="max-w-2xl w-full bg-white p-6 rounded-2xl shadow-lg text-center">
-    <h1 class="text-2xl font-bold mb-4 text-blue-800">🎯 استخراج التاغات من رابط YouTube</h1>
-    
-    <input id="videoUrl" type="text" placeholder="ألصق رابط الفيديو هنا"
-           class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-    
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white shadow-xl rounded-xl p-6 w-full max-w-2xl space-y-4 text-center">
+    <h1 class="text-2xl font-bold text-blue-700">📺 أداة استخراج التاغات من يوتيوب</h1>
+
+    <input id="videoUrl" type="text" placeholder="ألصق رابط فيديو يوتيوب هنا"
+      class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none text-right" />
+
     <button onclick="fetchTags()"
-            class="w-full bg-blue-700 text-white py-3 rounded-lg hover:bg-blue-800 transition">جلب التاغات</button>
-    
-    <div id="tagsContainer" class="mt-6 flex flex-wrap justify-center gap-2 text-sm"></div>
-    
-    <div class="mt-4 flex flex-col sm:flex-row justify-center gap-3">
+      class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+      🎯 جلب التاغات
+    </button>
+
+    <div id="tagsContainer" class="flex flex-wrap gap-2 justify-center text-sm text-gray-700 min-h-[2rem]">
+      <!-- التاغات تظهر هنا -->
+    </div>
+
+    <div class="flex justify-center gap-4">
       <button id="copyBtn" onclick="copyTags()" disabled
-              class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50">
+        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 disabled:opacity-50">
         📋 نسخ التاغات
       </button>
-      
+
       <button id="downloadBtn" onclick="downloadTags()" disabled
-              class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
-        📄 تحميل كـ .txt
+        class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 disabled:opacity-50">
+        📄 تحميل التاغات كـ .txt
       </button>
     </div>
   </div>
 
   <script>
-    const apiKey = "AIzaSyDMWWYjIpIYo6nCHTZjG_53wHJHBBO__2s"; // ← عوّضها بمفتاحك الحقيقي
+    const apiKey = "AIzaSyDMWWYjIpIYo6nCHTZjG_53wHJHBBO__2s"; // ← عوّضها بمفتاحك من YouTube Data API v3
+    let lastTags = "";
+    let videoTitle = "youtube-tags";
 
     function extractVideoId(url) {
       try {
@@ -76,14 +82,15 @@
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
-        const tags = data.items[0]?.snippet?.tags;
+        const snippet = data.items[0]?.snippet;
+        const tags = snippet?.tags;
+        videoTitle = snippet?.title || "youtube-tags";
 
         if (tags && tags.length) {
+          lastTags = tags.join(", ");
           container.innerHTML = tags.map(tag => `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${tag}</span>`).join('');
-          const tagString = tags.join(", ");
           copyBtn.disabled = false;
           downloadBtn.disabled = false;
-          copyBtn.setAttribute("data-tags", tagString);
         } else {
           container.innerHTML = '<p class="text-yellow-600">⚠️ لا توجد تاغات متاحة لهذا الفيديو</p>';
         }
@@ -93,9 +100,12 @@
       }
     }
 
+    function sanitizeFilename(name) {
+      return name.replace(/[\\\/:*?"<>|]/g, "").trim().slice(0, 100);
+    }
+
     function copyTags() {
-      const tags = document.getElementById("copyBtn").getAttribute("data-tags");
-      navigator.clipboard.writeText(tags).then(() => {
+      navigator.clipboard.writeText(lastTags).then(() => {
         alert("✅ تم نسخ التاغات!");
       }).catch(() => {
         alert("❌ وقع خطأ أثناء النسخ");
@@ -103,13 +113,13 @@
     }
 
     function downloadTags() {
-      const tags = document.getElementById("copyBtn").getAttribute("data-tags");
-      const blob = new Blob([tags], { type: 'text/plain' });
+      const filename = sanitizeFilename(videoTitle) + ".txt";
+      const blob = new Blob([lastTags], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
 
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'youtube-tags.txt';
+      a.download = filename;
       a.click();
 
       URL.revokeObjectURL(url);
