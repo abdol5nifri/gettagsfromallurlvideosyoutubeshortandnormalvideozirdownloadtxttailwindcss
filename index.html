@@ -41,7 +41,7 @@
         <h2 class="font-bold text-lg text-gray-800">🖼️ الصورة المصغرة:</h2>
         <div class="space-y-2">
           <img id="videoThumbnail" class="rounded-lg w-full max-w-xs shadow-md" src="" alt="thumbnail" />
-          <button onclick="downloadThumbnail()" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded">📥 تحميل الصورة</button>
+          <a id="downloadLink" class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded inline-block" download="thumbnail.jpg">📥 تحميل الصورة</a>
         </div>
       </div>
 
@@ -69,17 +69,18 @@
       const videoId = extractVideoID(url);
       if (!videoId) return alert("❌ الرابط غير صالح");
 
-      const apiUrl = `https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`;
+      const apiUrl = `https://yt.lemnoslife.com/videos?part=snippet&id=${videoId}`;
       try {
         const response = await fetch(apiUrl);
         const data = await response.json();
+        const info = data.items[0].snippet;
 
-        if (!data.title) return alert("❌ تعذر جلب البيانات");
-
-        document.getElementById("videoTitle").innerText = data.title || "";
-        document.getElementById("videoDescription").innerText = data.description || "لا يوجد وصف";
-        document.getElementById("videoThumbnail").src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-        document.getElementById("videoTags").innerText = (data.tags || []).join(", ");
+        document.getElementById("videoTitle").innerText = info.title || "";
+        document.getElementById("videoDescription").innerText = info.description || "لا يوجد وصف";
+        document.getElementById("videoTags").innerText = (info.tags || []).join(", ");
+        const thumbnailUrl = info.thumbnails.maxres?.url || info.thumbnails.high?.url;
+        document.getElementById("videoThumbnail").src = thumbnailUrl;
+        document.getElementById("downloadLink").href = thumbnailUrl;
 
         document.getElementById("videoInfo").classList.remove("hidden");
       } catch (err) {
@@ -104,14 +105,6 @@
       a.download = `${title || "video-description"}.txt`;
       a.click();
       URL.revokeObjectURL(a.href);
-    }
-
-    function downloadThumbnail() {
-      const url = document.getElementById("videoThumbnail").src;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "thumbnail.jpg";
-      a.click();
     }
   </script>
 
